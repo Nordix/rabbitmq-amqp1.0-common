@@ -13,7 +13,7 @@ jobs:
         otp: [ '21.3', '22.2' ]
 
     env:
-      base_rmq_ref: master
+      base_rmq_ref: main
       current_rmq_ref: ${{ github.head_ref || github.ref_name }}
 
     steps:
