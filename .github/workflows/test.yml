@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        otp: [ '21.3', '22.2' ]
+
+    env:
+      base_rmq_ref: master
+      current_rmq_ref: ${{ github.head_ref || github.ref_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build CI image
+        run: |
+          docker build \
+            --build-arg OTP_VERSION="${{ matrix.otp }}" \
+            --tag "rabbitmq-ci:otp-${{ matrix.otp }}" \
+            .
+
+      - name: Run checks
+        run: |
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/workspace" \
+            --workdir /workspace \
+            --hostname rabbitmq-ci \
+            --env base_rmq_ref \
+            --env current_rmq_ref \
+            --env GIT_TERMINAL_PROMPT=0 \
+            "rabbitmq-ci:otp-${{ matrix.otp }}" \
+            bash -euo pipefail -c '
+              make check-rabbitmq-components.mk current_rmq_ref="$current_rmq_ref"
+              make xref current_rmq_ref="$current_rmq_ref"
+              make tests current_rmq_ref="$current_rmq_ref"
+            '
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-otp-${{ matrix.otp }}
+          path: logs/
