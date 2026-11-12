@@ -41,7 +41,9 @@ dep_amqp_client                       = git_rmq rabbitmq-erlang-client $(current
 dep_amqp10_client                     = git_rmq rabbitmq-amqp1.0-client $(current_rmq_ref) $(base_rmq_ref) master
 dep_amqp10_common                     = git_rmq rabbitmq-amqp1.0-common $(current_rmq_ref) $(base_rmq_ref) master
 dep_rabbit                            = git_rmq rabbitmq-server $(current_rmq_ref) $(base_rmq_ref) master
-dep_rabbit_common                     = git_rmq rabbitmq-common $(current_rmq_ref) $(base_rmq_ref) master
+# Pin to 04c9531: last commit on v3.8.x with internal_user record in rabbit.hrl
+# (removed in 3bbe26f as part of per-user connection/channel limits work)
+dep_rabbit_common                     = git_rmq rabbitmq-common $(current_rmq_ref) 04c9531 $(base_rmq_ref) master
 dep_rabbitmq_amqp1_0                  = git_rmq rabbitmq-amqp1.0 $(current_rmq_ref) $(base_rmq_ref) master
 dep_rabbitmq_auth_backend_amqp        = git_rmq rabbitmq-auth-backend-amqp $(current_rmq_ref) $(base_rmq_ref) master
 dep_rabbitmq_auth_backend_cache       = git_rmq rabbitmq-auth-backend-cache $(current_rmq_ref) $(base_rmq_ref) master
@@ -55,7 +57,11 @@ dep_rabbitmq_cli                      = git_rmq rabbitmq-cli $(current_rmq_ref) 
 dep_rabbitmq_codegen                  = git_rmq rabbitmq-codegen $(current_rmq_ref) $(base_rmq_ref) master
 dep_rabbitmq_consistent_hash_exchange = git_rmq rabbitmq-consistent-hash-exchange $(current_rmq_ref) $(base_rmq_ref) master
 dep_rabbitmq_ct_client_helpers        = git_rmq rabbitmq-ct-client-helpers $(current_rmq_ref) $(base_rmq_ref) master
-dep_rabbitmq_ct_helpers               = git_rmq rabbitmq-ct-helpers $(current_rmq_ref) $(base_rmq_ref) master
+# Pin to e935a90: last commit on v3.8.x before 7428c06 switched rpc:call to
+# erpc:call. erpc was introduced in OTP 23 and is undefined on OTP 21/22.
+# Uses git (not git_rmq) with full hash because git_rmq's clone-then-checkout
+# cannot resolve mid-branch commits without a prior fetch.
+dep_rabbitmq_ct_helpers               = git https://github.com/rabbitmq/rabbitmq-ct-helpers.git e935a90be04813bc4de10b498fafdc4ae4e9bcbb
 dep_rabbitmq_delayed_message_exchange = git_rmq rabbitmq-delayed-message-exchange $(current_rmq_ref) $(base_rmq_ref) master
 dep_rabbitmq_dotnet_client            = git_rmq rabbitmq-dotnet-client $(current_rmq_ref) $(base_rmq_ref) master
 dep_rabbitmq_event_exchange           = git_rmq rabbitmq-event-exchange $(current_rmq_ref) $(base_rmq_ref) master
@@ -111,8 +117,8 @@ dep_rabbitmq_public_umbrella          = git_rmq rabbitmq-public-umbrella $(curre
 # possible to work with rabbitmq-public-umbrella.
 
 dep_accept = hex 0.3.5
-dep_cowboy = hex 2.6.1
-dep_cowlib = hex 2.7.0
+dep_cowboy = hex 2.8.0
+dep_cowlib = hex 2.9.1
 dep_jsx = hex 2.11.0
 dep_lager = hex 3.8.0
 dep_prometheus = hex 4.6.0
