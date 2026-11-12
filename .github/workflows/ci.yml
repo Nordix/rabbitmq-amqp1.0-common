@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [ 'v3.8.9-est', 'ci/github-actions' ]
+  pull_request:
+    branches: [ 'v3.8.9-est' ]
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        otp: [ '21.3', '22.2' ]
+
+    env:
+      base_rmq_ref: v3.8.x
+      current_rmq_ref: v3.8.9-est
+      PLUGIN: amqp10_common
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build CI image
+        run: |
+          docker build \
+            --build-arg OTP_VERSION="${{ matrix.otp }}" \
+            --tag "rabbitmq-ci:otp-${{ matrix.otp }}" \
+            .
+
+      - name: Run checks
+        run: |
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+            --workdir "$GITHUB_WORKSPACE" \
+            --hostname rabbitmq-ci \
+            --env base_rmq_ref \
+            --env current_rmq_ref \
+            --env PLUGIN \
+            "rabbitmq-ci:otp-${{ matrix.otp }}" \
+            bash -euo pipefail -c '
+              # The git_rmq macro uses an SSH push URL for components; the CI
+              # image has no ssh binary, so rewrite github SSH URLs to HTTPS.
+              # This plugin only fetches rabbit_common (no recursive rabbit
+              # umbrella), so the rewrite is kept for consistency with the
+              # rabbit-dependent plugins.
+              git config --global url."https://github.com/".insteadOf git@github.com:
+              git config --global --add safe.directory "*"
+              # Build the plugin inside an umbrella checkout for a flat, sibling
+              # dep layout, consistent with the rabbit-dependent plugins.
+              WS="$(pwd)"
+              cd /tmp
+              git clone --depth 1 --branch "$base_rmq_ref" \
+                https://github.com/rabbitmq/rabbitmq-public-umbrella.git umbrella
+              mkdir -p umbrella/deps
+              cp -a "$WS" "umbrella/deps/$PLUGIN"
+              cd "umbrella/deps/$PLUGIN"
+              make xref current_rmq_ref="$current_rmq_ref"
+              epmd -daemon
+              # binary_generator_SUITE is a deterministic codec unit suite (no
+              # broker, no timing). The backport is pin-only (no first-party
+              # code change), so build + xref + this suite is the full guard.
+              make tests current_rmq_ref="$current_rmq_ref"
+            '
