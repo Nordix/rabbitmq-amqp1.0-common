@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ 'v3.8.9-est', 'ci/github-actions' ]
+    branches: [ 'v3.8.9-est' ]
   pull_request:
     branches: [ 'v3.8.9-est' ]
 
