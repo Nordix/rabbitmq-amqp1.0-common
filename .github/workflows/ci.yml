@@ -17,7 +17,6 @@ jobs:
     env:
       base_rmq_ref: v3.8.x
       current_rmq_ref: v3.8.9-est
-      PLUGIN: amqp10_common
 
     steps:
       - uses: actions/checkout@v4
@@ -37,21 +36,12 @@ jobs:
             --hostname rabbitmq-ci \
             --env base_rmq_ref \
             --env current_rmq_ref \
-            --env PLUGIN \
             "rabbitmq-ci:otp-${{ matrix.otp }}" \
             bash -euo pipefail -c '
               # No ssh binary in the image; git_rmq uses an SSH push URL.
               git config --global url."https://github.com/".insteadOf git@github.com:
               git config --global --add safe.directory "*"
-              # Build under the umbrella for a flat dep layout, consistent with
-              # the rabbit-dependent plugins (not required here: no rabbit dep).
-              WS="$(pwd)"
-              cd /tmp
-              git clone --depth 1 --branch "$base_rmq_ref" \
-                https://github.com/rabbitmq/rabbitmq-public-umbrella.git umbrella
-              mkdir -p umbrella/deps
-              cp -a "$WS" "umbrella/deps/$PLUGIN"
-              cd "umbrella/deps/$PLUGIN"
+              make fetch-deps current_rmq_ref="$current_rmq_ref"
               make xref current_rmq_ref="$current_rmq_ref"
               epmd -daemon
               make tests current_rmq_ref="$current_rmq_ref"
