@@ -122,6 +122,14 @@ parse_compound1(Count, Bin, Acc) ->
     {Value, Rest} = parse(Bin),
     parse_compound1(Count - 1, Rest, [Value | Acc]).
 
+parse_array_primitive(16#40, <<_:8/unsigned, R/binary>>) -> {null, R};
+parse_array_primitive(16#41, <<_:8/unsigned, R/binary>>) -> {true, R};
+parse_array_primitive(16#42, <<_:8/unsigned, R/binary>>) -> {false, R};
+parse_array_primitive(16#43, <<_:8/unsigned, R/binary>>) -> {{uint, 0}, R};
+parse_array_primitive(16#44, <<_:8/unsigned, R/binary>>) -> {{ulong, 0}, R};
+parse_array_primitive(Marker, Data) ->
+    parse_primitive(Marker, Data).
+
 %% array structure is {array, Ctor, [Data]}
 %% e.g. {array, symbol, [<<"amqp:accepted:list">>]}
 parse_array(UnitSize, Bin) ->
@@ -141,8 +149,12 @@ parse_array1(Count, <<Type, ArrayBin/binary>>) ->
 
 parse_array2(0, Type, <<>>, Acc) ->
     {array, parse_constructor(Type), lists:reverse(Acc)};
+parse_array2(0, Type, Bin, Acc) ->
+    exit({failed_to_parse_array_extra_input_remaining, Type, Bin, Acc});
+parse_array2(Count, Type, <<>>, Acc) when Count > 0 ->
+    exit({failed_to_parse_array_insufficient_input, Type, Count, Acc});
 parse_array2(Count, Type, Bin, Acc) ->
-    {Value, Rest} = parse_primitive(Type, Bin),
+    {Value, Rest} = parse_array_primitive(Type, Bin),
     parse_array2(Count - 1, Type, Rest, [Value | Acc]).
 
 parse_constructor(16#a3) -> symbol;
