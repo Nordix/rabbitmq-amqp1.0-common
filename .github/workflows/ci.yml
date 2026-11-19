@@ -21,12 +21,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
       - name: Build CI image
-        run: |
-          docker build \
-            --build-arg OTP_VERSION="${{ matrix.otp }}" \
-            --tag "rabbitmq-ci:otp-${{ matrix.otp }}" \
-            .
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          build-args: OTP_VERSION=${{ matrix.otp }}
+          tags: rabbitmq-ci:otp-${{ matrix.otp }}
+          load: true
+          cache-from: type=gha,scope=otp-${{ matrix.otp }}
+          cache-to: type=gha,mode=max,scope=otp-${{ matrix.otp }}
 
       - name: Run checks
         run: |
